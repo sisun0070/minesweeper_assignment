@@ -111,14 +111,50 @@ class Board:
 
     def reveal(self, col: int, row: int) -> None:
         # TODO: Reveal a cell; if zero-adjacent, iteratively flood to neighbors.
-        # if not self.is_inbounds(col, row):
-        #     return
-        # if not self._mines_placed:
-        #     self.place_mines(col, row)
+        if not self.is_inbounds(col, row):
+            return
+        if self.game_over or self.win:
+            return
 
-        
-        # self._check_win()
-        pass
+        # 첫 클릭이면 이 시점에 지뢰 배치
+        if not self._mines_placed:
+            self.place_mines(col, row)
+
+        cell = self.cells[self.index(col, row)]
+        # 이미 열린 칸이거나 깃발 꽂힌 칸이면 무시
+        if cell.state.is_revealed or cell.state.is_flagged:
+            return
+
+        # 지뢰를 밟은 경우
+        if cell.state.is_mine:
+            cell.state.is_revealed = True
+            self.game_over = True
+            self._reveal_all_mines()
+            return
+
+        # flood fill (스택을 이용한 반복적 방식)
+        stack = [(col, row)]
+        while stack:
+            c, r = stack.pop()
+            if not self.is_inbounds(c, r):
+                continue
+            cur = self.cells[self.index(c, r)]
+            if cur.state.is_revealed or cur.state.is_flagged:
+                continue
+            if cur.state.is_mine:
+                continue  # 안전장치
+
+            cur.state.is_revealed = True
+            self.revealed_count += 1
+
+            # 주변 지뢰가 0이면 이웃 칸들도 연쇄적으로 열기
+            if cur.state.adjacent == 0:
+                for (nc, nr) in self.neighbors(c, r):
+                    neigh = self.cells[self.index(nc, nr)]
+                    if not neigh.state.is_revealed and not neigh.state.is_flagged:
+                        stack.append((nc, nr))
+
+        self._check_win()
 
     def toggle_flag(self, col: int, row: int) -> None:
         # TODO: Toggle a flag on a non-revealed cell.
@@ -145,6 +181,7 @@ class Board:
             for cell in self.cells:
                 if not cell.state.is_revealed and not cell.state.is_mine:
                     cell.state.is_revealed = True
+
 
 
 
