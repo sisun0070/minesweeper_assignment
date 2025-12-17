@@ -110,7 +110,7 @@ class Renderer:
         self._draw_buttons(buttons, selected_difficulty)
 
     def _draw_buttons(self, buttons: list[UIButton], selected_difficulty: str) -> None:
-        """Render UI buttons for difficulty and hint actions."""
+        """Render UI buttons for difficulty, hint, and restart actions."""
         for button in buttons:
             selected = button.kind == "difficulty" and button.value == selected_difficulty
             if button.disabled:
@@ -213,7 +213,7 @@ class Game:
         self._build_buttons()
         self.reset()
 
-    def reset(self):
+    def reset(self):  # Feature #5
         """Reset the game state and start a new board."""
         self._build_board()
         self.highlight_targets.clear()
@@ -228,7 +228,7 @@ class Game:
         self.board = Board(config.cols, config.rows, config.num_mines)
         self.renderer.board = self.board
 
-    def _build_buttons(self) -> None:  # Features #3, #4
+    def _build_buttons(self) -> None:  # Features #3, #4, #5
         """Create UI buttons positioned within the header area."""
         self.buttons = []
         btn_h = 32
@@ -248,7 +248,9 @@ class Game:
         total_controls = control_w * 2 + gap
         start_x = max(10, (config.width - total_controls) // 2)
         hint_rect = Rect(start_x, control_y, control_w, btn_h)
+        restart_rect = Rect(start_x + control_w + gap, control_y, control_w, btn_h)
         self.buttons.append(UIButton(rect=hint_rect, label="Hint", kind="hint"))
+        self.buttons.append(UIButton(rect=restart_rect, label="Restart", kind="restart"))  # Feature #5
 
     def _update_button_states(self) -> None:
         """Enable or disable hint button based on availability and game status."""
@@ -271,6 +273,8 @@ class Game:
             self.set_difficulty(button.value)
         elif button.kind == "hint":  # Feature #4
             self.use_hint()
+        elif button.kind == "restart":  # Feature #5
+            self.reset()
 
     def set_difficulty(self, name: str) -> None:  # Feature #3
         """Switch to a new difficulty setting and rebuild the game."""
