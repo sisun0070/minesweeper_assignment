@@ -9,6 +9,7 @@ This module owns:
 The logic lives in components.Board; this module should not implement rules.
 """
 
+import random
 import sys
 from dataclasses import dataclass
 
@@ -109,7 +110,7 @@ class Renderer:
         self._draw_buttons(buttons, selected_difficulty)
 
     def _draw_buttons(self, buttons: list[UIButton], selected_difficulty: str) -> None:
-        """Render UI buttons for difficulty selection."""
+        """Render UI buttons for difficulty and hint actions."""
         for button in buttons:
             selected = button.kind == "difficulty" and button.value == selected_difficulty
             if button.disabled:
@@ -207,6 +208,7 @@ class Game:
         self.started = False
         self.start_ticks_ms = 0
         self.end_ticks_ms = 0
+        self.hint_available = True
         self.buttons: list[UIButton] = []
         self._build_buttons()
         self.reset()
@@ -219,12 +221,14 @@ class Game:
         self.started = False
         self.start_ticks_ms = 0
         self.end_ticks_ms = 0
+        self.hint_available = True
+        self._update_button_states()
 
     def _build_board(self) -> None:
         self.board = Board(config.cols, config.rows, config.num_mines)
         self.renderer.board = self.board
 
-    def _build_buttons(self) -> None:  # Feature #3
+    def _build_buttons(self) -> None:  # Features #3, #4
         """Create UI buttons positioned within the header area."""
         self.buttons = []
         btn_h = 32
@@ -239,6 +243,19 @@ class Game:
             self.buttons.append(UIButton(rect=rect, label=diff, kind="difficulty", value=diff))
             start_x += diff_btn_w + gap
 
+        control_w = 140
+        control_y = 100
+        total_controls = control_w * 2 + gap
+        start_x = max(10, (config.width - total_controls) // 2)
+        hint_rect = Rect(start_x, control_y, control_w, btn_h)
+        self.buttons.append(UIButton(rect=hint_rect, label="Hint", kind="hint"))
+
+    def _update_button_states(self) -> None:
+        """Enable or disable hint button based on availability and game status."""
+        for button in self.buttons:
+            if button.kind == "hint":
+                button.disabled = (not self.hint_available) or self.board.game_over or self.board.win
+
     def button_at(self, pos: tuple[int, int]) -> UIButton | None:
         """Return the button at the given position, if any."""
         for button in self.buttons:
@@ -252,6 +269,8 @@ class Game:
             return
         if button.kind == "difficulty" and button.value:
             self.set_difficulty(button.value)
+        elif button.kind == "hint":  # Feature #4
+            self.use_hint()
 
     def set_difficulty(self, name: str) -> None:  # Feature #3
         """Switch to a new difficulty setting and rebuild the game."""
@@ -264,6 +283,27 @@ class Game:
         self.renderer.screen = self.screen
         self._build_buttons()
         self.reset()
+
+    def use_hint(self) -> None:  # Feature #4
+        """Reveal a safe cell exactly once per game."""
+        if not self.hint_available or self.board.game_over or self.board.win:
+            return
+        safe_cells = [
+            (cell.col, cell.row)
+            for cell in self.board.cells
+            if (not cell.state.is_mine and not cell.state.is_revealed and not cell.state.is_flagged)
+        ]
+        if not safe_cells:
+            self.hint_available = False
+            self._update_button_states()
+            return
+        if not self.started:
+            self.started = True
+            self.start_ticks_ms = pygame.time.get_ticks()
+        target = random.choice(safe_cells)
+        self.board.reveal(*target)
+        self.hint_available = False
+        self._update_button_states()
 
     def _elapsed_ms(self) -> int:  # Feature #1
         """Return elapsed time in milliseconds (stops when game ends)."""
@@ -292,6 +332,7 @@ class Game:
         """Render one frame: header, grid, result overlay."""
         if pygame.time.get_ticks() > self.highlight_until_ms and self.highlight_targets:
             self.highlight_targets.clear()
+        self._update_button_states()
         self.screen.fill(config.color_bg)
         remaining = max(0, config.num_mines - self.board.flagged_count())
         time_text = self._format_time(self._elapsed_ms())
