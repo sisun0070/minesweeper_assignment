@@ -17,7 +17,7 @@ Groups:
 # Display settings
 fps = 60
 
-# Grid settings
+# Grid settings (populated by difficulty presets)
 cols = 16
 rows = 16
 num_mines = 40
@@ -25,15 +25,14 @@ num_mines = 40
 # Cell size and margins
 cell_size = 32
 margin_left = 20
-margin_top = 60
+margin_top = 140
 margin_right = 20
 margin_bottom = 20
 
-# Derived display dimension
-width = margin_left + cols * cell_size + margin_right
-height = margin_top + rows * cell_size + margin_bottom
-
-display_dimension = (width, height)
+# Derived display dimension (computed dynamically)
+width = 0
+height = 0
+display_dimension = (0, 0)
 
 # Colors
 color_bg = (24, 26, 27)
@@ -48,6 +47,10 @@ color_header_text = (240, 240, 240)
 color_header = (32, 34, 36)
 color_highlight = (70, 130, 180)
 color_result = (242, 242, 0)
+color_button_bg = (63, 81, 181)
+color_button_selected = (100, 181, 246)
+color_button_disabled = (80, 80, 80)
+color_button_text = (250, 250, 250)
 
 # Number colors 1~8
 number_colors = {
@@ -80,4 +83,37 @@ result_overlay_alpha = 120
 
 # Misc
 title = "Minesweeper"
+
+
+# Difficulty presets
+difficulty_settings = {
+    "Easy": {"cols": 9, "rows": 9, "mines": 10},
+    "Normal": {"cols": 16, "rows": 16, "mines": 40},
+    "Hard": {"cols": 30, "rows": 16, "mines": 99},
+}
+
+default_difficulty = "Normal"
+
+
+def _recalculate_dimensions() -> None:
+    """Recompute width/height/display_dimension from current cols/rows."""
+    global width, height, display_dimension
+    width = margin_left + cols * cell_size + margin_right
+    height = margin_top + rows * cell_size + margin_bottom
+    display_dimension = (width, height)
+
+
+def apply_difficulty(name: str) -> None:
+    """Update grid configuration to the given preset name."""
+    if name not in difficulty_settings:
+        raise ValueError(f"Unknown difficulty: {name}")
+    settings = difficulty_settings[name]
+    global cols, rows, num_mines
+    cols = settings["cols"]
+    rows = settings["rows"]
+    num_mines = settings["mines"]
+    _recalculate_dimensions()
+
+
+apply_difficulty(default_difficulty)
 
