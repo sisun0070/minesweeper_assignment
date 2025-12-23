@@ -52,3 +52,6 @@ Python과 Pygame을 사용하여 구현한 **지뢰찾기(Minesweeper) 게임**�
 
 ```bash
 python run.py
+
+<img width="540" height="694" alt="image" src="https://github.com/user-attachments/assets/f9ebd01c-04d9-4df4-8535-1f30c45664ee" />
+
